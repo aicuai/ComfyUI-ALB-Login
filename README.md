@@ -9,3 +9,12 @@ This library inspects user info and redirect to the specified URL if the user is
 ## Installation
 
 In the directory ComfyUI/custom_nodes/, git clone this repo, and do pip install -r requirements.txt in the repo's directory.
+
+## Configuration
+
+You can set redirect URL and required group with environment variables.
+
+```
+REDIRECT_URL=https://example.com/membership
+REQUIRED_GROUP=membership
+```
