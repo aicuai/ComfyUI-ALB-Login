@@ -67,20 +67,14 @@ def decode_verify_jwt(token):
 def unauthorized_response(request):
     accept_header = request.headers.get('Accept', '')
     if 'text/html' in accept_header:
-        return web.json_response({
-            'error': 'Authentication required',
-            'redirect_url': redirect_url
-        }, status=401)
+        raise web.HTTPFound(redirect_url)
     else:
         return web.json_response({
             'error': 'Authentication required'
         }, status=401)
 
 def membership_required_response():
-    return web.json_response({
-        'error': 'Membership required',
-        'redirect_url': redirect_url
-    }, status=403)
+    raise web.HTTPFound(redirect_url)
 
 app.middlewares.append(check_login_status)
 
