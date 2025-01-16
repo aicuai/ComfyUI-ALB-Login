@@ -78,7 +78,4 @@ def membership_required_response():
 
 app.middlewares.append(check_login_status)
 
-old_css_path = os.path.join(node_dir, "old_css")
-app.router.add_static('/old_css/', old_css_path)
-
 NODE_CLASS_MAPPINGS = {}
