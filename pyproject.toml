@@ -1,0 +1,13 @@
+[project]
+name = "comfyui-alb-login"
+description = "Auth library to inspect token provided by ALB to protect ComfyUI."
+version = "1.0.0"
+license = "LICENSE"
+dependencies = ["aiohttp", "aiohttp_session[secure]", "Jinja2", "bcrypt", "pycryptodome"]
+
+[project.urls]
+Repository = "https://github.com/maekawataiki/ComfyUI-ALB-Login"
+
+[tool.comfy]
+PublisherId = "maekawataiki"
+DisplayName = "ComfyUI-ALB-Login"
