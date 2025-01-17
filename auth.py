@@ -8,10 +8,28 @@ import base64
 import os
 import logging
 import json
+import jwt
+import requests
+from urllib.parse import urlparse
 
 node_dir = os.path.dirname(__file__)
 required_group = os.getenv("REQUIRED_GROUP", "membership")
 redirect_url = os.getenv("REDIRECT_URL", "https://example.com/membership")
+
+# Get setting from environment variables
+region = os.getenv('AWS_REGION', 'ap-northeast-1')
+user_pool_id = os.getenv('COGNITO_USER_POOL_ID')
+client_id = os.getenv('COGNITO_CLIENT_ID')
+
+if not user_pool_id or not client_id:
+    raise ValueError("COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID must be set")
+
+# Build JWKS URL
+issuer = f'https://cognito-idp.{region}.amazonaws.com/{user_pool_id}'
+jwks_url = f'{issuer}/.well-known/jwks.json'
+
+# Get signing key
+jwks_client = jwt.PyJWKClient(jwks_url)
 
 # Access the PromptServer instance and its app
 prompt_server = server.PromptServer.instance
@@ -27,25 +45,29 @@ async def process_request(request, handler):
 
 @web.middleware
 async def check_login_status(request: web.Request, handler):
-    # 静的ファイルはスキップ
+    # Health check path
+    if request.path == '/system_stats':
+        return await handler(request)
+
+    # Static files are skipped
     if request.path.endswith(('.css', '.css.map', '.js', '.ico')):
         return await handler(request)
 
-    # ALBのOIDCヘッダーを取得
-    oidc_header = request.headers.get('x-amzn-oidc-data')
-    if not oidc_header:
+    # Access Token ヘッダーを取得
+    access_token = request.headers.get('x-amzn-oidc-accesstoken')
+    if not access_token:
         return unauthorized_response(request)
 
     try:
-        # ヘッダーをデコードしてJWTを検証
-        decoded_token = decode_verify_jwt(oidc_header)
-        
-        # cognito:groupsの確認
+        # Decode header and verify JWT
+        decoded_token = decode_verify_jwt(access_token)
+
+        # Check cognito:groups
         cognito_groups = decoded_token.get('cognito:groups', [])
         if required_group not in cognito_groups:
             return membership_required_response()
 
-        # 認証OK
+        # Authentication OK
         return await process_request(request, handler)
 
     except Exception as e:
@@ -53,16 +75,40 @@ async def check_login_status(request: web.Request, handler):
         return unauthorized_response(request)
 
 def decode_verify_jwt(token):
-    # JWTのデコード処理
-    # 注: 実際の実装では適切な検証が必要です
-    parts = token.split('.')
-    if len(parts) != 3:
-        raise ValueError("Invalid JWT format")
-    
-    payload = parts[1]
-    padding = '=' * (4 - len(payload) % 4)
-    decoded_payload = base64.urlsafe_b64decode(payload + padding)
-    return json.loads(decoded_payload)
+    """Decode and verify the Cognito access token."""
+    try:
+        signing_key = jwks_client.get_signing_key_from_jwt(token)
+
+        # Decode the token
+        decoded_token = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=client_id,
+            issuer=issuer,
+            options={
+                "verify_aud": False,  # Cognito Access Token does not contain aud claim
+                "verify_exp": True,  # Verify expiration
+                "verify_iat": True,  # Verify issued at
+                "verify_nbf": True,  # Verify not before
+            }
+        )
+
+        # Check if it is an access token
+        if decoded_token.get('token_use') != 'access':
+            raise ValueError("Invalid token_use - expected 'access'")
+
+        return decoded_token
+
+    except jwt.ExpiredSignatureError:
+        logging.error("Token has expired")
+        raise ValueError("Token has expired")
+    except jwt.InvalidTokenError as e:
+        logging.error(f"Invalid token: {str(e)}")
+        raise ValueError(f"Invalid token: {str(e)}")
+    except Exception as e:
+        logging.error(f"JWT verification failed: {str(e)}")
+        raise ValueError(f"Token verification failed: {str(e)}")
 
 def unauthorized_response(request):
     accept_header = request.headers.get('Accept', '')

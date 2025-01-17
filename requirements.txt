@@ -1,1 +1,3 @@
 aiohttp
+pyjwt
+pyjwt[crypto]
