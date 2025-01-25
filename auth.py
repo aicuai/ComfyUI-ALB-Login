@@ -12,14 +12,21 @@ import jwt
 import requests
 from urllib.parse import urlparse
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 node_dir = os.path.dirname(__file__)
 required_groups = [group.strip() for group in os.getenv("REQUIRED_GROUP", "membership").split(',')]
+logging.info(f"REQUIRED_GROUP from env: {required_groups}")
 redirect_url = os.getenv("REDIRECT_URL", "https://example.com/membership")
+logging.info(f"REDIRECT_URL from env: {redirect_url}")
 
 # Get setting from environment variables
 region = os.getenv('AWS_REGION', 'ap-northeast-1')
+logging.info(f"AWS_REGION from env: {region}")
 user_pool_id = os.getenv('COGNITO_USER_POOL_ID')
+logging.info(f"COGNITO_USER_POOL_ID from env: {user_pool_id}")
 client_id = os.getenv('COGNITO_CLIENT_ID')
+logging.info(f"COGNITO_CLIENT_ID from env: {client_id}")
 
 if not user_pool_id or not client_id:
     raise ValueError("COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID must be set")
