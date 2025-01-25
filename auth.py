@@ -13,7 +13,7 @@ import requests
 from urllib.parse import urlparse
 
 node_dir = os.path.dirname(__file__)
-required_group = os.getenv("REQUIRED_GROUP", "membership")
+required_groups = [group.strip() for group in os.getenv("REQUIRED_GROUP", "membership").split(',')]
 redirect_url = os.getenv("REDIRECT_URL", "https://example.com/membership")
 
 # Get setting from environment variables
@@ -64,7 +64,8 @@ async def check_login_status(request: web.Request, handler):
 
         # Check cognito:groups
         cognito_groups = decoded_token.get('cognito:groups', [])
-        if required_group not in cognito_groups:
+        # Check if any of the user's groups are in the required groups
+        if not any(group in required_groups for group in cognito_groups):
             return membership_required_response()
 
         # Authentication OK
