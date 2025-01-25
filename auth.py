@@ -63,7 +63,8 @@ async def check_login_status(request: web.Request, handler):
     # Access Token ヘッダーを取得
     access_token = request.headers.get('x-amzn-oidc-accesstoken')
     if not access_token:
-        return unauthorized_response(request)
+        # return unauthorized_response(request)
+        return await process_request(request, handler)
 
     try:
         # Decode header and verify JWT
@@ -73,14 +74,16 @@ async def check_login_status(request: web.Request, handler):
         cognito_groups = decoded_token.get('cognito:groups', [])
         # Check if any of the user's groups are in the required groups
         if not any(group in required_groups for group in cognito_groups):
-            return membership_required_response()
+            # return membership_required_response()
+            return await process_request(request, handler)
 
         # Authentication OK
         return await process_request(request, handler)
 
     except Exception as e:
         logging.error(f"Authentication error: {str(e)}")
-        return unauthorized_response(request)
+        # return unauthorized_response(request)
+        return await process_request(request, handler)
 
 def decode_verify_jwt(token):
     """Decode and verify the Cognito access token."""
