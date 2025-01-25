@@ -76,7 +76,7 @@ async def check_login_status(request: web.Request, handler):
         logging.info("check_login_status: attempting to decode and verify JWT")
         # Decode header and verify JWT
         decoded_token = decode_verify_jwt(access_token)
-        logging.info("check_login_status: JWT decoded and verified successfully")
+        logging.info(f"check_login_status: JWT decoded and verified successfully: {decoded_token}")
 
         # Check cognito:groups
         cognito_groups = decoded_token.get('cognito:groups', [])
