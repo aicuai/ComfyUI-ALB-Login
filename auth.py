@@ -64,6 +64,10 @@ async def check_login_status(request: web.Request, handler):
     if request.path.endswith(('.css', '.css.map', '.js', '.ico')):
         logging.info("check_login_status: static file path, skipping auth check")
         return await handler(request)
+    
+    if request.path == '/ws' and request.method != 'GET':
+        logging.info("check_login_status: ws path, skipping auth check")
+        return await handler(request)
 
     # Access Token ヘッダーを取得
     access_token = request.headers.get('x-amzn-oidc-accesstoken')
