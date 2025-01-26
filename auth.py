@@ -16,17 +16,17 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 node_dir = os.path.dirname(__file__)
 required_groups = [group.strip() for group in os.getenv("REQUIRED_GROUP", "membership").split(',')]
-logging.info(f"REQUIRED_GROUP from env: {required_groups}")
+# logging.info(f"REQUIRED_GROUP from env: {required_groups}")
 redirect_url = os.getenv("REDIRECT_URL", "https://example.com/membership")
-logging.info(f"REDIRECT_URL from env: {redirect_url}")
+# logging.info(f"REDIRECT_URL from env: {redirect_url}")
 
 # Get setting from environment variables
 region = os.getenv('AWS_REGION', 'ap-northeast-1')
-logging.info(f"AWS_REGION from env: {region}")
+# logging.info(f"AWS_REGION from env: {region}")
 user_pool_id = os.getenv('COGNITO_USER_POOL_ID')
-logging.info(f"COGNITO_USER_POOL_ID from env: {user_pool_id}")
+# logging.info(f"COGNITO_USER_POOL_ID from env: {user_pool_id}")
 client_id = os.getenv('COGNITO_CLIENT_ID')
-logging.info(f"COGNITO_CLIENT_ID from env: {client_id}")
+# logging.info(f"COGNITO_CLIENT_ID from env: {client_id}")
 
 if not user_pool_id or not client_id:
     raise ValueError("COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID must be set")
@@ -45,11 +45,11 @@ routes = prompt_server.routes
 
 async def process_request(request, handler):
     """Process the request by calling the handler and setting response headers."""
-    logging.info(f"process_request: start - path: {request.path}")
+    # logging.info(f"process_request: start - path: {request.path}")
     response = await handler(request)
     if request.path == '/':  # Prevent caching the main page after logout
         response.headers.setdefault('Cache-Control', 'no-cache')
-    logging.info(f"process_request: end - path: {request.path}, status: {response.status}")
+    # logging.info(f"process_request: end - path: {request.path}, status: {response.status}")
     return response
 
 @web.middleware
@@ -65,7 +65,8 @@ async def check_login_status(request: web.Request, handler):
         logging.info("check_login_status: static file path, skipping auth check")
         return await handler(request)
     
-    if request.path == '/ws' and request.method != 'GET':
+    # if request.path == '/ws' and request.method != 'GET':
+    if request.path == '/ws':
         logging.info("check_login_status: ws path, skipping auth check")
         return await handler(request)
 
@@ -73,23 +74,22 @@ async def check_login_status(request: web.Request, handler):
     access_token = request.headers.get('x-amzn-oidc-accesstoken')
     if not access_token:
         logging.info("check_login_status: access_token not found in headers")
-        # return unauthorized_response(request)
-        return await process_request(request, handler)
+        return unauthorized_response(request)
 
     try:
         logging.info("check_login_status: attempting to decode and verify JWT")
         # Decode header and verify JWT
         decoded_token = decode_verify_jwt(access_token)
-        logging.info(f"check_login_status: JWT decoded and verified successfully: {decoded_token}")
+        # logging.info(f"check_login_status: JWT decoded and verified successfully: {decoded_token}")
 
         # Check cognito:groups
         cognito_groups = decoded_token.get('cognito:groups', [])
-        logging.info(f"check_login_status: cognito groups: {cognito_groups}")
+        # logging.info(f"check_login_status: cognito groups: {cognito_groups}")
         # Check if any of the user's groups are in the required groups
         if not any(group in required_groups for group in cognito_groups):
-            logging.info(f"check_login_status: user group does not match required groups: {required_groups}")
-            # return membership_required_response()
-            return await process_request(request, handler)
+            logging.info(f"check_login_status: user group does not match required groups")
+            # logging.info(f"check_login_status: user group does not match required groups: {required_groups}")
+            return membership_required_response()
 
         # Authentication OK
         logging.info("check_login_status: authentication successful")
